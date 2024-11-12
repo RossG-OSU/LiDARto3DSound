@@ -220,43 +220,134 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         delegate?.onNewPhotoData(capturedData: data)
     }
     // found at forums.developer.apple.com/forums/thread/653539 
-    func convertDepthData(depthMap: CVPixelBuffer) -> [[Float32]] {
+    func convertDepthData(depthMap: CVPixelBuffer, windowSize: Int = 30) -> [[Float32]]? {
         let width = CVPixelBufferGetWidth(depthMap)
         let height = CVPixelBufferGetHeight(depthMap)
-        var convertedDepthMap: [[Float32]] = Array(
-            repeating: Array(repeating: 0, count: width),
-            count: height
-        )
-        CVPixelBufferLockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 2))
-        let floatBuffer = unsafeBitCast(
-            CVPixelBufferGetBaseAddress(depthMap),
-            to: UnsafeMutablePointer<Float32>.self
-        )
-        for row in 0 ..< height {
-            for col in 0 ..< width {
-                convertedDepthMap[row][col] = floatBuffer[width * row + col]
+        
+        var convertedDepthMap: [[Float32]] = Array(repeating: Array(repeating: 0.0, count: width), count: height)
+        
+        // Lock the pixel buffer's base address for safe access
+        CVPixelBufferLockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
+            
+        // Ensure the pixel format is DepthFloat16 (kCVPixelFormatType_DepthFloat16)
+        guard CVPixelBufferGetPixelFormatType(depthMap) == kCVPixelFormatType_DepthFloat16 else {
+            print("Error: Pixel buffer has incorrect format. Expected kCVPixelFormatType_DepthFloat16.")
+            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
+            return nil
+        }
+            
+        // Get the base address and safely cast it to an UnsafeMutablePointer<UInt16>
+        guard let baseAddress = CVPixelBufferGetBaseAddress(depthMap) else {
+            print("Error: Failed to retrieve base address of the pixel buffer.")
+            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
+            return nil
+        }
+            
+        // Each pixel is represented by a 16-bit float, so cast the buffer to UInt16.
+        // However, since there's no native Float16 type in Swift, we can convert it to Float32 for easier manipulation.
+        let buffer = baseAddress.assumingMemoryBound(to: UInt16.self)
+            
+        // Iterate over the pixel buffer and convert it into a 2D array of Float32 values
+        for row in 0..<height {
+            for col in 0..<width {
+                // Calculate the index in the buffer
+                let index = width * row + col
+                let halfPrecisionValue = buffer[index]
+                    
+                // Convert the 16-bit half precision value to Float32 for easier usage
+                // Here we need a helper function to decode half-precision floats
+                let float32Value = convertHalfToFloat32(halfPrecisionValue)
+                convertedDepthMap[row][col] = float32Value
             }
         }
         CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 2))
+        
+        smoothDepthMap(depthMap: convertedDepthMap, windowSize: windowSize)
+        
         return convertedDepthMap
         
         //try this next: forums.developer.apple.com/forums/thread/709872
-        /* let depthData = syncedDepthData.depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat16)
-         let depthMapWidth = CVPixelBufferGetWidthOfPlane(depthData.depthDataMap, 0)
-         let depthMapHeight = CVPixelBufferGetHeightOfPlane(depthData.depthDataMap, 0)
-         let centerX = depthMapWidth / 2
-         let centerY = depthMapHeight / 2
-         print("Depth value at the center (x,y): \(centerX) \(centerY)")
-         
-         CVPixelBufferLockBaseAddress(depthData.depthDataMap, .readOnly)
-         if let rowData = CVPixelBufferGetBaseAddress(depthData.depthDataMap)?.assumingMemoryBound(to: Float16.self) {
-             let depthPoint = rowData[centerY * depthMapWidth + centerX]
-             let depthPoint1 = rowData[centerY * depthMapWidth + centerX + 10]
-             let depthPoint2 = rowData[centerY * depthMapWidth + centerX + 100]
-             print("Depth value at the center in meters: \(depthPoint) \(depthPoint1) \(depthPoint2) meters")
-         }
-         CVPixelBufferUnlockBaseAddress(depthData.depthDataMap, .readOnly) */
-        }
-
+        
+    }
     
+    func convertHalfToFloat32(_ half: UInt16) -> Float32 {
+        let sign = (half & 0x8000) >> 15
+        let exponent = (half & 0x7C00) >> 10
+        let fraction = half & 0x03FF
+        
+        // Convert to the nearest single-precision float (this is a simplified version of the conversion)
+        if exponent == 0 {
+            // Subnormal or zero
+            return Float32(sign == 0 ? 0 : -0)
+        } else if exponent == 0x1F {
+            // Infinity or NaN
+            return Float32(sign == 0 ? Float.infinity : -Float.infinity)
+        } else {
+            // Normalized value
+            let exponentFloat = Float32(exponent - 15)  // Bias of 15
+            let fractionFloat = Float32(fraction) / Float32(1 << 10)
+            return Float32((sign == 0 ? 1 : -1) * pow(2, exponentFloat) * (1 + fractionFloat))
+        }
+    }
+    
+    func smoothDepthMap(depthMap: [[Float32]], windowSize: Int) -> [[Float32]] {
+        let height = depthMap.count
+        let width = depthMap[0].count
+        let halfWindowSize = windowSize / 2
+        
+        // Create a new array to hold the smoothed depth values
+        var smoothedDepthMap = Array(repeating: Array(repeating: Float32(0.0), count: width), count: height)
+
+        
+        // Iterate over each pixel in the depth map
+        for row in 0..<height {
+            for col in 0..<width {
+                var sum: Float32 = 0.0
+                var count: Int = 0
+                
+                // Iterate through the 7x7 window around the current pixel
+                for i in -halfWindowSize...halfWindowSize {
+                    for j in -halfWindowSize...halfWindowSize {
+                        // Calculate the coordinates of the neighboring pixel
+                        let neighborRow = row + i
+                        let neighborCol = col + j
+                        
+                        // Ensure the neighbor is within bounds
+                        if neighborRow >= 0 && neighborRow < height && neighborCol >= 0 && neighborCol < width {
+                            sum += depthMap[neighborRow][neighborCol]
+                            count += 1
+                        }
+                    }
+                }
+                
+                // Calculate the average and assign it to the smoothed depth map
+                if count > 0 {
+                    smoothedDepthMap[row][col] = sum / Float32(count)
+                }
+            }
+        }
+        
+        let targetSize = windowSize
+            var downsampledDepthMap = Array(repeating: Array(repeating: Float32(0.0), count: windowSize), count: targetSize)
+            
+            let rowStep = height / targetSize
+            let colStep = width / targetSize
+            
+            for i in 0..<targetSize {
+                for j in 0..<targetSize {
+                    let rowIndex = i * rowStep
+                    let colIndex = j * colStep
+                    downsampledDepthMap[i][j] = smoothedDepthMap[rowIndex][colIndex]
+                }
+            }
+                    
+        // print for debugging
+        for (rowIndex, row) in downsampledDepthMap.enumerated() {
+            let rowString = row.map { String(format: "%.2f", $0) }.joined(separator: " ")
+            print("Row \(rowIndex): \(rowString)")
+        }
+        
+        return downsampledDepthMap
+    }
+
 }
