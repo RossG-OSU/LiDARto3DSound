@@ -207,6 +207,9 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         // Convert the depth data to the expected format.
         let convertedDepth = depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat16)
         
+        let convertedDepthMap = convertDepthData(depthMap: convertedDepth.depthDataMap)
+        print(convertedDepthMap)
+        
         // Package the captured data.
         let data = CameraCapturedData(depth: convertedDepth.depthDataMap.texture(withFormat: .r16Float, planeIndex: 0, addToCache: textureCache),
                                       colorY: pixelBuffer.texture(withFormat: .r8Unorm, planeIndex: 0, addToCache: textureCache),
@@ -216,4 +219,44 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         
         delegate?.onNewPhotoData(capturedData: data)
     }
+    // found at forums.developer.apple.com/forums/thread/653539 
+    func convertDepthData(depthMap: CVPixelBuffer) -> [[Float32]] {
+        let width = CVPixelBufferGetWidth(depthMap)
+        let height = CVPixelBufferGetHeight(depthMap)
+        var convertedDepthMap: [[Float32]] = Array(
+            repeating: Array(repeating: 0, count: width),
+            count: height
+        )
+        CVPixelBufferLockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 2))
+        let floatBuffer = unsafeBitCast(
+            CVPixelBufferGetBaseAddress(depthMap),
+            to: UnsafeMutablePointer<Float32>.self
+        )
+        for row in 0 ..< height {
+            for col in 0 ..< width {
+                convertedDepthMap[row][col] = floatBuffer[width * row + col]
+            }
+        }
+        CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 2))
+        return convertedDepthMap
+        
+        //try this next: forums.developer.apple.com/forums/thread/709872
+        /* let depthData = syncedDepthData.depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat16)
+         let depthMapWidth = CVPixelBufferGetWidthOfPlane(depthData.depthDataMap, 0)
+         let depthMapHeight = CVPixelBufferGetHeightOfPlane(depthData.depthDataMap, 0)
+         let centerX = depthMapWidth / 2
+         let centerY = depthMapHeight / 2
+         print("Depth value at the center (x,y): \(centerX) \(centerY)")
+         
+         CVPixelBufferLockBaseAddress(depthData.depthDataMap, .readOnly)
+         if let rowData = CVPixelBufferGetBaseAddress(depthData.depthDataMap)?.assumingMemoryBound(to: Float16.self) {
+             let depthPoint = rowData[centerY * depthMapWidth + centerX]
+             let depthPoint1 = rowData[centerY * depthMapWidth + centerX + 10]
+             let depthPoint2 = rowData[centerY * depthMapWidth + centerX + 100]
+             print("Depth value at the center in meters: \(depthPoint) \(depthPoint1) \(depthPoint2) meters")
+         }
+         CVPixelBufferUnlockBaseAddress(depthData.depthDataMap, .readOnly) */
+        }
+
+    
 }
