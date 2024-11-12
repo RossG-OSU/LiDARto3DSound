@@ -29,9 +29,22 @@
 		49D080EE2CC4A3A400E3A34D /* LiDARto3DSoundUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LiDARto3DSoundUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		364CEC242CE2D6E000CB376F /* Exceptions for "LiDARto3DSound" folder in "LiDARto3DSound" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 49D080D32CC4A3A000E3A34D /* LiDARto3DSound */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		49D080D62CC4A3A000E3A34D /* LiDARto3DSound */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				364CEC242CE2D6E000CB376F /* Exceptions for "LiDARto3DSound" folder in "LiDARto3DSound" target */,
+			);
 			path = LiDARto3DSound;
 			sourceTree = "<group>";
 		};
@@ -396,8 +409,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"LiDARto3DSound/Preview Content\"";
+				DEVELOPMENT_TEAM = 888ZTUMR3Q;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LiDARto3DSound/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -424,8 +440,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"LiDARto3DSound/Preview Content\"";
+				DEVELOPMENT_TEAM = 888ZTUMR3Q;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LiDARto3DSound/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
