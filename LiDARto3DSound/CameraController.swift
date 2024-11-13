@@ -208,7 +208,6 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         let convertedDepth = depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat16)
         
         let convertedDepthMap = convertDepthData(depthMap: convertedDepth.depthDataMap)
-        print(convertedDepthMap)
         
         // Package the captured data.
         let data = CameraCapturedData(depth: convertedDepth.depthDataMap.texture(withFormat: .r16Float, planeIndex: 0, addToCache: textureCache),
@@ -219,7 +218,8 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         
         delegate?.onNewPhotoData(capturedData: data)
     }
-    // found at forums.developer.apple.com/forums/thread/653539 
+    
+    // found at forums.developer.apple.com/forums/thread/653539
     func convertDepthData(depthMap: CVPixelBuffer, windowSize: Int = 30) -> [[Float32]]? {
         let width = CVPixelBufferGetWidth(depthMap)
         let height = CVPixelBufferGetHeight(depthMap)
@@ -243,8 +243,8 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
             return nil
         }
             
-        // Each pixel is represented by a 16-bit float, so cast the buffer to UInt16.
-        // However, since there's no native Float16 type in Swift, we can convert it to Float32 for easier manipulation.
+        // Cast the buffer to UInt16.
+        // no native Float16 type in Swift, so convert it to Float32
         let buffer = baseAddress.assumingMemoryBound(to: UInt16.self)
             
         // Iterate over the pixel buffer and convert it into a 2D array of Float32 values
@@ -265,9 +265,7 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         smoothDepthMap(depthMap: convertedDepthMap, windowSize: windowSize)
         
         return convertedDepthMap
-        
-        //try this next: forums.developer.apple.com/forums/thread/709872
-        
+                
     }
     
     func convertHalfToFloat32(_ half: UInt16) -> Float32 {
@@ -275,7 +273,6 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         let exponent = (half & 0x7C00) >> 10
         let fraction = half & 0x03FF
         
-        // Convert to the nearest single-precision float (this is a simplified version of the conversion)
         if exponent == 0 {
             // Subnormal or zero
             return Float32(sign == 0 ? 0 : -0)
@@ -305,7 +302,7 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
                 var sum: Float32 = 0.0
                 var count: Int = 0
                 
-                // Iterate through the 7x7 window around the current pixel
+                // Iterate through the window around the current pixel
                 for i in -halfWindowSize...halfWindowSize {
                     for j in -halfWindowSize...halfWindowSize {
                         // Calculate the coordinates of the neighboring pixel
