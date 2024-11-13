@@ -205,9 +205,9 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         stopStream()
         
         // Convert the depth data to the expected format.
-        let convertedDepth = depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat16)
+        var convertedDepth = depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat16)
         
-        let convertedDepthMap = convertDepthData(depthMap: convertedDepth.depthDataMap)
+        convertAndSmoothDepthData(depthMap: convertedDepth.depthDataMap)
         
         // Package the captured data.
         let data = CameraCapturedData(depth: convertedDepth.depthDataMap.texture(withFormat: .r16Float, planeIndex: 0, addToCache: textureCache),
@@ -220,11 +220,9 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
     }
     
     // found at forums.developer.apple.com/forums/thread/653539
-    func convertDepthData(depthMap: CVPixelBuffer, windowSize: Int = 30) -> [[Float32]]? {
+    func convertAndSmoothDepthData(depthMap: CVPixelBuffer, windowSize: Int = 30) -> CVPixelBuffer? {
         let width = CVPixelBufferGetWidth(depthMap)
         let height = CVPixelBufferGetHeight(depthMap)
-        
-        var convertedDepthMap: [[Float32]] = Array(repeating: Array(repeating: 0.0, count: width), count: height)
         
         // Lock the pixel buffer's base address for safe access
         CVPixelBufferLockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
@@ -235,38 +233,90 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
             CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
             return nil
         }
-            
-        // Get the base address and safely cast it to an UnsafeMutablePointer<UInt16>
+        
+        // Get the base address and safely cast it to an UnsafeMutablePointer<Float16>
         guard let baseAddress = CVPixelBufferGetBaseAddress(depthMap) else {
             print("Error: Failed to retrieve base address of the pixel buffer.")
             CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
             return nil
         }
-            
-        // Cast the buffer to UInt16.
-        // no native Float16 type in Swift, so convert it to Float32
-        let buffer = baseAddress.assumingMemoryBound(to: UInt16.self)
-            
-        // Iterate over the pixel buffer and convert it into a 2D array of Float32 values
+        
+        // Cast the buffer to Float16 (half-precision floating point)
+        let buffer = baseAddress.assumingMemoryBound(to: Float16.self)
+        
+        // Create a new pixel buffer to store the smoothed data as DepthFloat16
+        var outputBuffer: CVPixelBuffer?
+        let pixelFormat = kCVPixelFormatType_DepthFloat16
+        let options: [CFString: Any] = [
+            kCVPixelBufferWidthKey: width,
+            kCVPixelBufferHeightKey: height,
+            kCVPixelBufferPixelFormatTypeKey: pixelFormat
+        ]
+        
+        let status = CVPixelBufferCreate(nil, width, height, pixelFormat, options as CFDictionary, &outputBuffer)
+        if status != kCVReturnSuccess {
+            print("Error: Failed to create output pixel buffer.")
+            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
+            return nil
+        }
+        
+        // Lock the output pixel buffer
+        CVPixelBufferLockBaseAddress(outputBuffer!, CVPixelBufferLockFlags.readWrite)
+        
+        // Get the base address of the output buffer and cast it to a pointer for Float16
+        guard let outputBaseAddress = CVPixelBufferGetBaseAddress(outputBuffer!) else {
+            print("Error: Failed to retrieve base address of the output pixel buffer.")
+            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
+            CVPixelBufferUnlockBaseAddress(outputBuffer!, CVPixelBufferLockFlags.readWrite)
+            return nil
+        }
+        
+        let outputBufferPointer = outputBaseAddress.assumingMemoryBound(to: Float16.self)
+
+        // Apply smoothing using a moving window average on Float16 values
+        let halfWindow = windowSize / 2
+        
         for row in 0..<height {
             for col in 0..<width {
-                // Calculate the index in the buffer
-                let index = width * row + col
-                let halfPrecisionValue = buffer[index]
+                var sum: Float32 = 0.0  // Using Float32 for the sum to avoid overflow
+                var count: Int = 0
+                
+                // Loop through the window around the current pixel (ensuring we stay within bounds)
+                for i in -halfWindow...halfWindow {
+                    for j in -halfWindow...halfWindow {
+                        let neighborRow = row + i
+                        let neighborCol = col + j
+                        
+                        // Skip out-of-bounds indices
+                        if neighborRow >= 0 && neighborRow < height && neighborCol >= 0 && neighborCol < width {
+                            let neighborIndex = width * neighborRow + neighborCol
+                            let neighborValue = buffer[neighborIndex]
+                            
+                            // Add the neighbor value to the sum (Float16 values, promoted to Float32 for sum)
+                            sum += Float32(neighborValue)
+                            count += 1
+                        }
+                    }
+                }
+                
+                // Calculate the average and store it (truncate if necessary)
+                if count > 0 {
+                    let average = sum / Float32(count)
                     
-                // Convert the 16-bit half precision value to Float32 for easier usage
-                // Here we need a helper function to decode half-precision floats
-                let float32Value = convertHalfToFloat32(halfPrecisionValue)
-                convertedDepthMap[row][col] = float32Value
+                    // Truncate to Float16 and store it in the output buffer
+                    outputBufferPointer[width * row + col] = Float16(average)
+                }
             }
         }
-        CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 2))
         
-        smoothDepthMap(depthMap: convertedDepthMap, windowSize: windowSize)
+        // Unlock the buffers after processing
+        CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
+        CVPixelBufferUnlockBaseAddress(outputBuffer!, CVPixelBufferLockFlags.readWrite)
         
-        return convertedDepthMap
-                
+        return outputBuffer
     }
+
+
     
     func convertHalfToFloat32(_ half: UInt16) -> Float32 {
         let sign = (half & 0x8000) >> 15
