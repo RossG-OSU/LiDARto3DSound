@@ -207,10 +207,10 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         // Convert the depth data to the expected format.
         var convertedDepth = depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat16)
         
-        convertAndSmoothDepthData(depthMap: convertedDepth.depthDataMap)
+        let smoothedDepth = convertAndSmoothDepthData(depth: convertedDepth)
         
         // Package the captured data.
-        let data = CameraCapturedData(depth: convertedDepth.depthDataMap.texture(withFormat: .r16Float, planeIndex: 0, addToCache: textureCache),
+        let data = CameraCapturedData(depth: smoothedDepth.depthDataMap.texture(withFormat: .r16Float, planeIndex: 0, addToCache: textureCache),
                                       colorY: pixelBuffer.texture(withFormat: .r8Unorm, planeIndex: 0, addToCache: textureCache),
                                       colorCbCr: pixelBuffer.texture(withFormat: .rg8Unorm, planeIndex: 1, addToCache: textureCache),
                                       cameraIntrinsics: cameraCalibrationData.intrinsicMatrix,
@@ -220,25 +220,27 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
     }
     
     // found at forums.developer.apple.com/forums/thread/653539
-    func convertAndSmoothDepthData(depthMap: CVPixelBuffer, windowSize: Int = 30) -> CVPixelBuffer? {
+    func convertAndSmoothDepthData(depth: AVDepthData, windowSize: Int = 60) {
+        var depthMap = depth.depthDataMap
+        
         let width = CVPixelBufferGetWidth(depthMap)
         let height = CVPixelBufferGetHeight(depthMap)
         
         // Lock the pixel buffer's base address for safe access
-        CVPixelBufferLockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
+        CVPixelBufferLockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 0))
             
         // Ensure the pixel format is DepthFloat16 (kCVPixelFormatType_DepthFloat16)
         guard CVPixelBufferGetPixelFormatType(depthMap) == kCVPixelFormatType_DepthFloat16 else {
             print("Error: Pixel buffer has incorrect format. Expected kCVPixelFormatType_DepthFloat16.")
-            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
-            return nil
+            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 0))
+            return
         }
         
         // Get the base address and safely cast it to an UnsafeMutablePointer<Float16>
         guard let baseAddress = CVPixelBufferGetBaseAddress(depthMap) else {
             print("Error: Failed to retrieve base address of the pixel buffer.")
-            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
-            return nil
+            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 0))
+            return
         }
         
         // Cast the buffer to Float16 (half-precision floating point)
@@ -256,23 +258,10 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         let status = CVPixelBufferCreate(nil, width, height, pixelFormat, options as CFDictionary, &outputBuffer)
         if status != kCVReturnSuccess {
             print("Error: Failed to create output pixel buffer.")
-            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
-            return nil
+            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 0))
+            return
         }
         
-        // Lock the output pixel buffer
-        CVPixelBufferLockBaseAddress(outputBuffer!, CVPixelBufferLockFlags.readWrite)
-        
-        // Get the base address of the output buffer and cast it to a pointer for Float16
-        guard let outputBaseAddress = CVPixelBufferGetBaseAddress(outputBuffer!) else {
-            print("Error: Failed to retrieve base address of the output pixel buffer.")
-            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
-            CVPixelBufferUnlockBaseAddress(outputBuffer!, CVPixelBufferLockFlags.readWrite)
-            return nil
-        }
-        
-        let outputBufferPointer = outputBaseAddress.assumingMemoryBound(to: Float16.self)
-
         // Apply smoothing using a moving window average on Float16 values
         let halfWindow = windowSize / 2
         
@@ -304,16 +293,15 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
                     let average = sum / Float32(count)
                     
                     // Truncate to Float16 and store it in the output buffer
-                    outputBufferPointer[width * row + col] = Float16(average)
+                    buffer[width * row + col] = Float16(average)
                 }
             }
         }
         
         // Unlock the buffers after processing
         CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
-        CVPixelBufferUnlockBaseAddress(outputBuffer!, CVPixelBufferLockFlags.readWrite)
-        
-        return outputBuffer
+                
+        return
     }
 
 
