@@ -14,6 +14,10 @@ protocol CaptureDataReceiver: AnyObject {
     func onNewPhotoData(capturedData: CameraCapturedData)
 }
 
+protocol CaptureAnchors: AnyObject {
+    func onNewAnchors(soundAnchors: [simd_float3])
+}
+
 class CameraController: NSObject, ObservableObject {
     
     enum ConfigurationError: Error {
@@ -173,7 +177,58 @@ extension CameraController: AVCaptureDataOutputSynchronizerDelegate {
                                       cameraReferenceDimensions: cameraCalibrationData.intrinsicMatrixReferenceDimensions)
         
         delegate?.onNewData(capturedData: data)
+
+        let anchorPoints = extractDepthData(from: syncedDepthData.depthData)
+        
+        weak var delegate1: CaptureAnchors?
+        delegate1?.onNewAnchors(soundAnchors: anchorPoints)
     }
+    
+    func extractDepthData(from depthData: AVDepthData) -> [simd_float3] {
+        let depthDataMap = depthData.depthDataMap
+        CVPixelBufferLockBaseAddress(depthDataMap, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(depthDataMap, .readOnly) }
+        
+        let width = CVPixelBufferGetWidth(depthDataMap)
+        let height = CVPixelBufferGetHeight(depthDataMap)
+        let baseAddress = CVPixelBufferGetBaseAddress(depthDataMap)!
+        let floatBuffer = baseAddress.assumingMemoryBound(to: Float16.self)
+        let cameraCalibrationData = depthData.cameraCalibrationData
+        
+        var points3D: [simd_float3] = []
+        let index = (height / 2 * width) + (width / 2)
+        let depth = floatBuffer[index]
+        let point = depthTo3DPoint(x: width / 2, y: height / 2, depth: Float(depth), intrinsics: cameraCalibrationData!.intrinsicMatrix)
+        points3D.append(point)
+        return points3D
+        }
+//        for y in 0..<height {
+//            for x in 0..<width {
+//                let index = y * width + x
+//                let depth = floatBuffer[index]
+//                let point = depthTo3DPoint(x: x, y: y, depth: Float(depth), intrinsics: cameraCalibrationData!.intrinsicMatrix)
+//                points3D.append(point)
+//                }
+//            }
+//        
+//        return points3D
+//        }
+    
+    func depthTo3DPoint(x: Int, y: Int, depth: Float, intrinsics: simd_float3x3) -> simd_float3 {
+        let fx = intrinsics[0, 0]
+        let fy = intrinsics[1, 1]
+        let cx = intrinsics[0, 2]
+        let cy = intrinsics[1, 2]
+        
+        let X = (Float(x) - cx) * depth / fx
+        let Y = (Float(y) - cy) * depth / fy
+        let Z = depth
+        
+        return simd_float3(X, Y, Z)
+    }
+    
+    
+    
 }
 
 // MARK: Photo Capture Delegate

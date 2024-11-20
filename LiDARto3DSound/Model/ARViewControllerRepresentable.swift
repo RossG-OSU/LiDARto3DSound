@@ -12,7 +12,7 @@ import UIKit
 struct ARViewControllerRepresentable: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> ViewController {
         // Create and return your ViewController here
-        return ViewController()
+        return ViewController(coder: )!
     }
     
     func updateUIViewController(_ uiViewController: ViewController, context: Context) {

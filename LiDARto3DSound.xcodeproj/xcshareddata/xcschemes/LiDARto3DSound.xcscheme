@@ -29,30 +29,6 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
       shouldAutocreateTestPlan = "YES">
-      <Testables>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "49D080E32CC4A3A400E3A34D"
-               BuildableName = "LiDARto3DSoundTests.xctest"
-               BlueprintName = "LiDARto3DSoundTests"
-               ReferencedContainer = "container:LiDARto3DSound.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "49D080ED2CC4A3A400E3A34D"
-               BuildableName = "LiDARto3DSoundUITests.xctest"
-               BlueprintName = "LiDARto3DSoundUITests"
-               ReferencedContainer = "container:LiDARto3DSound.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-      </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"

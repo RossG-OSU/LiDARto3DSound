@@ -52,7 +52,7 @@ struct ContentView: View {
             
             ARViewControllerRepresentable()  // This will show the AR audio scene
                             //.edgesIgnoringSafeArea(.all)  // Optional: Make AR scene take full screen
-                            .frame(height: 300)  // Optional: Limit AR scene height (you can adjust this based on preference)
+                            //.frame(height: 300)  // Optional: Limit AR scene height (you can adjust this based on preference)
             
         }
     }

@@ -11,7 +11,7 @@ import ARKit
 import PHASE
 import CoreMotion
 
-class ViewController: UIViewController, ARSessionDelegate {
+class ViewController: UIViewController, ARSessionDelegate, CaptureAnchors {
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -19,14 +19,37 @@ class ViewController: UIViewController, ARSessionDelegate {
     
     var phaseEngine: PHASEEngine
     var phaseListener: PHASEListener
+    var spatialMixerDefinition: PHASESpatialMixerDefinition!
     
-    func didload() {
+    override func viewDidLoad() {
+        super.viewDidLoad()
         setupPhase()
+    }
+    
+//    required init?(coder: NSCoder) {
+//        fatalError("init(coder:) has not been implemented")
+//    }
+    
+    func onNewAnchors(soundAnchors: [simd_float3]) {
+        phaseEngine.rootObject.removeChildren()
+        for point in soundAnchors {
+            createAudioSource(for: createARAnchor(from: point))
+        }
+    }
+    
+    func createARAnchor(from point: simd_float3) -> ARAnchor {
+        return ARAnchor(name: "SoundPoint", transform: simd_float4x4.translationTransform(point))
+    }
+    
+    func createAudioSource(for anchor: ARAnchor) {
+        let source = PHASESource(engine: phaseEngine)
+        source.transform = anchor.transform
+        try! phaseEngine.rootObject.addChild(source)
     }
     
     func setupPhase() {
             phaseEngine = PHASEEngine(updateMode: .automatic)
-            phaseSpatialMixerDefinition = setupPhaseSpatialMixerDefinition()
+            spatialMixerDefinition = setupPhaseSpatialMixerDefinition()
             phaseListener = setupPhaseListener()
             
 //            for (anchorName, fileName) in anchorFileMapping {
@@ -34,7 +57,7 @@ class ViewController: UIViewController, ARSessionDelegate {
 //            }
             
             try! phaseEngine.start()
-        }
+    }
     
     func setupPhaseListener() -> PHASEListener {
         let listener = PHASEListener(engine: phaseEngine)
@@ -64,9 +87,10 @@ class ViewController: UIViewController, ARSessionDelegate {
     func setupPhaseDistanceModelParameters() -> PHASEDistanceModelParameters {
         let distanceModelParameters = PHASEGeometricSpreadingDistanceModelParameters()
         distanceModelParameters.fadeOutParameters =
-//        PHASEDistanceModelFadeOutParameters(cullDistance: DEFAULT_CULL_DISTANCE)
-//        distanceModelParameters.rolloffFactor = DEFAULT_ROLLOFF_FACTOR
+        PHASEDistanceModelFadeOutParameters(cullDistance: 16.5)
+        distanceModelParameters.rolloffFactor = 2.0
         return distanceModelParameters
     }
     
 }
+
