@@ -20,7 +20,7 @@ class CameraController: NSObject, ObservableObject {
         case lidarDeviceUnavailable
         case requiredFormatUnavailable
     }
-    
+    private let soundManager = SoundManager()
     private let preferredWidthResolution = 1920
     
     private let videoQueue = DispatchQueue(label: "com.example.apple-samplecode.VideoQueue", qos: .userInteractive)
@@ -207,7 +207,12 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         // Convert the depth data to the expected format.
         let convertedDepth = depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat16)
         
-        let convertedDepthMap = convertDepthData(depthMap: convertedDepth.depthDataMap)
+        let avgDepthSubwindows = weightedDepthAvgSubwindows(depthMap: convertedDepth.depthDataMap)
+        
+        // Play sounds based on the depth subwindows
+        if let avgDepths = avgDepthSubwindows {
+            soundManager.playSounds(for: avgDepths, interval: 0.5) // Adjust interval as needed
+        }
         
         // Package the captured data.
         let data = CameraCapturedData(depth: convertedDepth.depthDataMap.texture(withFormat: .r16Float, planeIndex: 0, addToCache: textureCache),
@@ -219,8 +224,45 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         delegate?.onNewPhotoData(capturedData: data)
     }
     
+    func weightedDepthAvgSubwindows(depthMap: CVPixelBuffer) -> [Float32]? {
+        
+        let convertedDepthMap = convertDepthData(depthMap: depthMap)
+        // Calculate weighted averages for 5 vertical subwindows
+        let height = convertedDepthMap!.count
+        let width = convertedDepthMap![0].count
+        let halfx = height / 2 // Halving for abs value later, slight preference for bottom of frame
+        let num_sections = 5
+        let section_width = width / num_sections
+        
+        var results: [Float32] = []
+        let multiplier = Float32(16.5 / 0.1) // Set to make array of 0 values near 1 (max volume)
+           
+        for section in 0..<num_sections {
+            var rolling_avg = Float32(0)
+            let start_x = section * section_width
+            let end_x = (section == num_sections - 1) ? width : start_x + section_width
+               
+            for x in start_x..<end_x {
+                for y in 0..<height {
+                    let halfy = (start_x + end_x) / 2 // Middle of the current section
+                    if let depthValue = convertedDepthMap?[y][x] {
+                        rolling_avg += ((16.5 / (depthValue + 0.01)) /
+                                        (fabsf(Float(x - halfy)) + fabsf(Float(y - halfx)) + 0.1))
+                    }
+                }
+            }
+               
+            let section_area = Float32((end_x - start_x) * height)
+            rolling_avg /= section_area * multiplier
+            results.append(rolling_avg)
+        }
+           
+        return results
+    
+    }
+    
     // found at forums.developer.apple.com/forums/thread/653539
-    func convertDepthData(depthMap: CVPixelBuffer, windowSize: Int = 30) -> [[Float32]]? {
+    func convertDepthData(depthMap: CVPixelBuffer) -> [[Float32]]? {
         let width = CVPixelBufferGetWidth(depthMap)
         let height = CVPixelBufferGetHeight(depthMap)
         
@@ -261,9 +303,7 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
             }
         }
         CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 2))
-        
-        smoothDepthMap(depthMap: convertedDepthMap, windowSize: windowSize)
-        
+                
         return convertedDepthMap
                 
     }
@@ -285,66 +325,6 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
             let fractionFloat = Float32(fraction) / Float32(1 << 10)
             return Float32((sign == 0 ? 1 : -1) * pow(2, exponentFloat) * (1 + fractionFloat))
         }
-    }
-    
-    func smoothDepthMap(depthMap: [[Float32]], windowSize: Int) -> [[Float32]] {
-        let height = depthMap.count
-        let width = depthMap[0].count
-        let halfWindowSize = windowSize / 2
-        
-        // Create a new array to hold the smoothed depth values
-        var smoothedDepthMap = Array(repeating: Array(repeating: Float32(0.0), count: width), count: height)
-
-        
-        // Iterate over each pixel in the depth map
-        for row in 0..<height {
-            for col in 0..<width {
-                var sum: Float32 = 0.0
-                var count: Int = 0
-                
-                // Iterate through the window around the current pixel
-                for i in -halfWindowSize...halfWindowSize {
-                    for j in -halfWindowSize...halfWindowSize {
-                        // Calculate the coordinates of the neighboring pixel
-                        let neighborRow = row + i
-                        let neighborCol = col + j
-                        
-                        // Ensure the neighbor is within bounds
-                        if neighborRow >= 0 && neighborRow < height && neighborCol >= 0 && neighborCol < width {
-                            sum += depthMap[neighborRow][neighborCol]
-                            count += 1
-                        }
-                    }
-                }
-                
-                // Calculate the average and assign it to the smoothed depth map
-                if count > 0 {
-                    smoothedDepthMap[row][col] = sum / Float32(count)
-                }
-            }
-        }
-        
-        let targetSize = windowSize
-            var downsampledDepthMap = Array(repeating: Array(repeating: Float32(0.0), count: windowSize), count: targetSize)
-            
-            let rowStep = height / targetSize
-            let colStep = width / targetSize
-            
-            for i in 0..<targetSize {
-                for j in 0..<targetSize {
-                    let rowIndex = i * rowStep
-                    let colIndex = j * colStep
-                    downsampledDepthMap[i][j] = smoothedDepthMap[rowIndex][colIndex]
-                }
-            }
-                    
-        // print for debugging
-        for (rowIndex, row) in downsampledDepthMap.enumerated() {
-            let rowString = row.map { String(format: "%.2f", $0) }.joined(separator: " ")
-            print("Row \(rowIndex): \(rowString)")
-        }
-        
-        return downsampledDepthMap
     }
 
 }
