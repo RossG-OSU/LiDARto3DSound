@@ -13,9 +13,14 @@ class SoundManager {
     private var playIndex = 0
     private var interval: TimeInterval = 0.5 // Adjust playback interval
 
+    
+    deinit {
+        print("SoundManager deallocated")
+    }
+    
     init() {
         // Load the beep sound
-        guard let soundURL = Bundle.main.url(forResource: "beep", withExtension: "wav") else {
+        guard let soundURL = Bundle.main.url(forResource: "beep_333hz", withExtension: "wav") else {
             fatalError("Beep sound file not found")
         }
         
@@ -32,29 +37,38 @@ class SoundManager {
         }
     }
 
-    func playSounds(for values: [Float32], interval: TimeInterval) {
-        guard !values.isEmpty else { return }
-        self.interval = interval
+    func playSounds(for values: [Float16]) {
+        guard !values.isEmpty else {
+            print("Values Empty")
+            return
+        }
         self.playIndex = 0
 
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+        //timer?.invalidate()
+        print("Setting up timer with interval \(self.interval)")
+        timer = Timer.scheduledTimer(withTimeInterval: self.interval, repeats: true) { [weak self] _ in
+            print("Timer fired")
             self?.playNext(values: values)
         }
+        
     }
 
-    private func playNext(values: [Float32]) {
+    private func playNext(values: [Float16]) {
+        print("playNext called with playIndex \(playIndex)")
+
         guard playIndex < values.count, playIndex < audioPlayers.count else {
+            print("Invalid index. Stopping timer.")
             timer?.invalidate()
             return
         }
 
-        // Adjust the volume based on the depth value
+        // Volume adjustment logic
         let volume = max(0, min(1, values[playIndex]))
+        print("Setting player volume to \(volume) at index \(playIndex)")
+        
         let player = audioPlayers[playIndex]
-        player.volume = volume
+        player.volume = Float(volume)
         player.play()
-
         playIndex += 1
     }
 }

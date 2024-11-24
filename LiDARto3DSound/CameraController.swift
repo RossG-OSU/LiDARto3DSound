@@ -41,6 +41,7 @@ class CameraController: NSObject, ObservableObject {
             depthDataOutput.isFilteringEnabled = isFilteringEnabled
         }
     }
+
     
     override init() {
         
@@ -52,12 +53,13 @@ class CameraController: NSObject, ObservableObject {
                                   &textureCache)
         
         super.init()
-        
+
         do {
             try setupSession()
         } catch {
             fatalError("Unable to configure the capture session.")
         }
+        
     }
     
     private func setupSession() throws {
@@ -151,6 +153,7 @@ class CameraController: NSObject, ObservableObject {
     func stopStream() {
         captureSession.stopRunning()
     }
+
 }
 
 // MARK: Output Synchronizer Delegate
@@ -165,6 +168,15 @@ extension CameraController: AVCaptureDataOutputSynchronizerDelegate {
         guard let pixelBuffer = syncedVideoData.sampleBuffer.imageBuffer,
               let cameraCalibrationData = syncedDepthData.depthData.cameraCalibrationData else { return }
         
+        
+        let avgDepthSubwindows = weightedDepthAvgSubwindows(depthMap: syncedDepthData.depthData.depthDataMap)
+        print("Avg array \(String(describing: avgDepthSubwindows))")
+        // Play sounds based on the depth subwindows
+        if let avgDepths = avgDepthSubwindows {
+            soundManager.playSounds(for: avgDepths)
+        }
+        
+        
         // Package the captured data.
         let data = CameraCapturedData(depth: syncedDepthData.depthData.depthDataMap.texture(withFormat: .r16Float, planeIndex: 0, addToCache: textureCache),
                                       colorY: pixelBuffer.texture(withFormat: .r8Unorm, planeIndex: 0, addToCache: textureCache),
@@ -174,6 +186,88 @@ extension CameraController: AVCaptureDataOutputSynchronizerDelegate {
         
         delegate?.onNewData(capturedData: data)
     }
+    
+    func weightedDepthAvgSubwindows(depthMap: CVPixelBuffer) -> [Float16]? {
+        guard let convertedDepthMap = convertDepthData(depthMap: depthMap) else {
+            return nil
+        }
+        
+        let height = convertedDepthMap.count
+        let width = convertedDepthMap[0].count
+        let halfx = Float(height) / 2.0 // Vertical center of the image
+        let num_sections = 5
+        let section_width = width / num_sections
+
+        var results: [Float16] = []
+
+        for section in 0..<num_sections {
+            var weightedSum: Float = 0
+            var totalWeight: Float = 0
+
+            let start_x = section * section_width
+            let end_x = (section == num_sections - 1) ? width : start_x + section_width
+            let halfy = Float(start_x + end_x) / 2.0 // Horizontal center of the section
+
+            for x in start_x..<end_x {
+                for y in 0..<height {
+                    var depthValue = Float(convertedDepthMap[y][x]) // Access depth value directly
+                    if depthValue > 8.0 {
+                            depthValue = 8.0
+                    }
+                    let weight = 1.0 / (fabsf(Float(x) - halfy) + fabsf(Float(y) - halfx) + 0.1)
+                    
+                    weightedSum += (8.1 - depthValue) * weight // Invert depth for 0 (near) -> 8.1 (far)
+                    totalWeight += weight
+                }
+            }
+
+            // Normalize the weighted average to be between 0 and 1
+            let normalizedValue = weightedSum / (totalWeight * 8.1)
+            results.append(Float16(normalizedValue))
+        }
+
+        return results
+    }
+    
+    // found at forums.developer.apple.com/forums/thread/653539
+    func convertDepthData(depthMap: CVPixelBuffer) -> [[Float16]]? {
+        let width = CVPixelBufferGetWidth(depthMap)
+        let height = CVPixelBufferGetHeight(depthMap)
+        
+        var convertedDepthMap: [[Float16]] = Array(repeating: Array(repeating: Float16(0), count: width), count: height)
+        
+        // Lock the pixel buffer's base address for safe access
+        CVPixelBufferLockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
+            
+        // Ensure the pixel format is DepthFloat16 (kCVPixelFormatType_DepthFloat16)
+        guard CVPixelBufferGetPixelFormatType(depthMap) == kCVPixelFormatType_DepthFloat16 else {
+            print("Error: Pixel buffer has incorrect format. Expected kCVPixelFormatType_DepthFloat16.")
+            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
+            return nil
+        }
+            
+        // Get the base address and safely cast it to an UnsafeMutablePointer<UInt16>
+        guard let baseAddress = CVPixelBufferGetBaseAddress(depthMap) else {
+            print("Error: Failed to retrieve base address of the pixel buffer.")
+            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
+            return nil
+        }
+            
+        let buffer = baseAddress.assumingMemoryBound(to: UInt16.self)
+            
+        // Iterate over the pixel buffer and convert it into a 2D array of Float32 values
+        for row in 0..<height {
+                for col in 0..<width {
+                    let index = width * row + col
+                    convertedDepthMap[row][col] = Float16(bitPattern: buffer[index])
+                }
+            }
+        CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
+                
+        return convertedDepthMap
+                
+    }
+    
 }
 
 // MARK: Photo Capture Delegate
@@ -206,14 +300,7 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         
         // Convert the depth data to the expected format.
         let convertedDepth = depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat16)
-        
-        let avgDepthSubwindows = weightedDepthAvgSubwindows(depthMap: convertedDepth.depthDataMap)
-        
-        // Play sounds based on the depth subwindows
-        if let avgDepths = avgDepthSubwindows {
-            soundManager.playSounds(for: avgDepths, interval: 0.5) // Adjust interval as needed
-        }
-        
+
         // Package the captured data.
         let data = CameraCapturedData(depth: convertedDepth.depthDataMap.texture(withFormat: .r16Float, planeIndex: 0, addToCache: textureCache),
                                       colorY: pixelBuffer.texture(withFormat: .r8Unorm, planeIndex: 0, addToCache: textureCache),
@@ -222,109 +309,6 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
                                       cameraReferenceDimensions: cameraCalibrationData.intrinsicMatrixReferenceDimensions)
         
         delegate?.onNewPhotoData(capturedData: data)
-    }
-    
-    func weightedDepthAvgSubwindows(depthMap: CVPixelBuffer) -> [Float32]? {
-        
-        let convertedDepthMap = convertDepthData(depthMap: depthMap)
-        // Calculate weighted averages for 5 vertical subwindows
-        let height = convertedDepthMap!.count
-        let width = convertedDepthMap![0].count
-        let halfx = height / 2 // Halving for abs value later, slight preference for bottom of frame
-        let num_sections = 5
-        let section_width = width / num_sections
-        
-        var results: [Float32] = []
-        let multiplier = Float32(16.5 / 0.1) // Set to make array of 0 values near 1 (max volume)
-           
-        for section in 0..<num_sections {
-            var rolling_avg = Float32(0)
-            let start_x = section * section_width
-            let end_x = (section == num_sections - 1) ? width : start_x + section_width
-               
-            for x in start_x..<end_x {
-                for y in 0..<height {
-                    let halfy = (start_x + end_x) / 2 // Middle of the current section
-                    if let depthValue = convertedDepthMap?[y][x] {
-                        rolling_avg += ((16.5 / (depthValue + 0.01)) /
-                                        (fabsf(Float(x - halfy)) + fabsf(Float(y - halfx)) + 0.1))
-                    }
-                }
-            }
-               
-            let section_area = Float32((end_x - start_x) * height)
-            rolling_avg /= section_area * multiplier
-            results.append(rolling_avg)
-        }
-           
-        return results
-    
-    }
-    
-    // found at forums.developer.apple.com/forums/thread/653539
-    func convertDepthData(depthMap: CVPixelBuffer) -> [[Float32]]? {
-        let width = CVPixelBufferGetWidth(depthMap)
-        let height = CVPixelBufferGetHeight(depthMap)
-        
-        var convertedDepthMap: [[Float32]] = Array(repeating: Array(repeating: 0.0, count: width), count: height)
-        
-        // Lock the pixel buffer's base address for safe access
-        CVPixelBufferLockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
-            
-        // Ensure the pixel format is DepthFloat16 (kCVPixelFormatType_DepthFloat16)
-        guard CVPixelBufferGetPixelFormatType(depthMap) == kCVPixelFormatType_DepthFloat16 else {
-            print("Error: Pixel buffer has incorrect format. Expected kCVPixelFormatType_DepthFloat16.")
-            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
-            return nil
-        }
-            
-        // Get the base address and safely cast it to an UnsafeMutablePointer<UInt16>
-        guard let baseAddress = CVPixelBufferGetBaseAddress(depthMap) else {
-            print("Error: Failed to retrieve base address of the pixel buffer.")
-            CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
-            return nil
-        }
-            
-        // Cast the buffer to UInt16.
-        // no native Float16 type in Swift, so convert it to Float32
-        let buffer = baseAddress.assumingMemoryBound(to: UInt16.self)
-            
-        // Iterate over the pixel buffer and convert it into a 2D array of Float32 values
-        for row in 0..<height {
-            for col in 0..<width {
-                // Calculate the index in the buffer
-                let index = width * row + col
-                let halfPrecisionValue = buffer[index]
-                    
-                // Convert the 16-bit half precision value to Float32 for easier usage
-                // Here we need a helper function to decode half-precision floats
-                let float32Value = convertHalfToFloat32(halfPrecisionValue)
-                convertedDepthMap[row][col] = float32Value
-            }
-        }
-        CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags(rawValue: 2))
-                
-        return convertedDepthMap
-                
-    }
-    
-    func convertHalfToFloat32(_ half: UInt16) -> Float32 {
-        let sign = (half & 0x8000) >> 15
-        let exponent = (half & 0x7C00) >> 10
-        let fraction = half & 0x03FF
-        
-        if exponent == 0 {
-            // Subnormal or zero
-            return Float32(sign == 0 ? 0 : -0)
-        } else if exponent == 0x1F {
-            // Infinity or NaN
-            return Float32(sign == 0 ? Float.infinity : -Float.infinity)
-        } else {
-            // Normalized value
-            let exponentFloat = Float32(exponent - 15)  // Bias of 15
-            let fractionFloat = Float32(fraction) / Float32(1 << 10)
-            return Float32((sign == 0 ? 1 : -1) * pow(2, exponentFloat) * (1 + fractionFloat))
-        }
     }
 
 }
