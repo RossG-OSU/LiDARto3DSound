@@ -173,7 +173,7 @@ extension CameraController: AVCaptureDataOutputSynchronizerDelegate {
         print("Avg array \(String(describing: avgDepthSubwindows))")
         // Play sounds based on the depth subwindows
         if let avgDepths = avgDepthSubwindows {
-            soundManager.playSounds(for: avgDepths)
+            soundManager.sounds = avgDepths
         }
         
         
@@ -191,12 +191,14 @@ extension CameraController: AVCaptureDataOutputSynchronizerDelegate {
         guard let convertedDepthMap = convertDepthData(depthMap: depthMap) else {
             return nil
         }
-        
+        // calculate average of 5 sections of the view, but only in the middle 25% of the height.
         let height = convertedDepthMap.count
         let width = convertedDepthMap[0].count
         let halfx = Float(height) / 2.0 // Vertical center of the image
         let num_sections = 5
         let section_width = width / num_sections
+        let top_3rd = height * 5 / 8
+        let bottom_3rd = height * 3 / 8
 
         var results: [Float16] = []
 
@@ -209,20 +211,20 @@ extension CameraController: AVCaptureDataOutputSynchronizerDelegate {
             let halfy = Float(start_x + end_x) / 2.0 // Horizontal center of the section
 
             for x in start_x..<end_x {
-                for y in 0..<height {
+                for y in bottom_3rd..<top_3rd {
                     var depthValue = Float(convertedDepthMap[y][x]) // Access depth value directly
-                    if depthValue > 8.0 {
-                            depthValue = 8.0
+                    if depthValue > 5.0 {
+                            depthValue = 5.0
                     }
-                    let weight = 1.0 / (fabsf(Float(x) - halfy) + fabsf(Float(y) - halfx) + 0.1)
+                    let weight = 1.0 / (fabsf(Float(x) - halfy) + fabsf(Float(y) - halfx) + 0.001)
                     
-                    weightedSum += (8.1 - depthValue) * weight // Invert depth for 0 (near) -> 8.1 (far)
+                    weightedSum += (5.001 - depthValue) * weight // Invert depth for 0 (near) -> 3.0 (far)
                     totalWeight += weight
                 }
             }
 
             // Normalize the weighted average to be between 0 and 1
-            let normalizedValue = weightedSum / (totalWeight * 8.1)
+            let normalizedValue = weightedSum / (totalWeight * 5.0)
             results.append(Float16(normalizedValue))
         }
 
