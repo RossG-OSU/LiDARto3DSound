@@ -13,9 +13,12 @@ import AVFoundation
 class SoundManager {
     private var audioPlayers: [AVAudioPlayer] = []
     private var timer: Timer?
+
     private var playIndex = 0
-    private let interval: TimeInterval = 0.1 // Playback interval
+    private let interval: TimeInterval = 0.2 // Playback interval
+
     var sounds: [Float16] = [0, 0, 0, 0, 0] // Shared state
+
 
     deinit {
         print("SoundManager deallocated")
@@ -28,7 +31,8 @@ class SoundManager {
         }
 
         // Create AVAudioPlayer instances for each pan level
-        for pan in [-1.0, -0.35, 0.0, 0.35, 1.0] as [Float] {
+        // [-1.0, -0.75, -0.50, 0.0, 0.50, 0.75, 1.0]
+        for pan in [-1.0, -0.5, 0, 0.5, 1.0] as [Float] {
             do {
                 let player = try AVAudioPlayer(contentsOf: soundURL)
                 player.pan = pan

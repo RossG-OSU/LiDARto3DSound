@@ -169,7 +169,7 @@ extension CameraController: AVCaptureDataOutputSynchronizerDelegate {
               let cameraCalibrationData = syncedDepthData.depthData.cameraCalibrationData else { return }
         
         
-        let avgDepthSubwindows = weightedDepthAvgSubwindows(depthMap: syncedDepthData.depthData.depthDataMap)
+        let avgDepthSubwindows = depthAvgSubwindows(depthMap: syncedDepthData.depthData.depthDataMap)
         print("Avg array \(String(describing: avgDepthSubwindows))")
         // Play sounds based on the depth subwindows
         if let avgDepths = avgDepthSubwindows {
@@ -185,6 +185,53 @@ extension CameraController: AVCaptureDataOutputSynchronizerDelegate {
                                       cameraReferenceDimensions: cameraCalibrationData.intrinsicMatrixReferenceDimensions)
         
         delegate?.onNewData(capturedData: data)
+    }
+    
+    func depthAvgSubwindows(depthMap: CVPixelBuffer) -> [Float16]? {
+        guard let convertedDepthMap = convertDepthData(depthMap: depthMap) else {
+            return nil
+        }
+        // calculate average of 5 sections of the view, but only in the middle 25% of the height.
+        let height = convertedDepthMap.count
+        let width = convertedDepthMap[0].count
+        let num_sections = 5
+        let section_width = width / num_sections
+        let top_mid25pc = height * 5 / 8
+        let bottom_mid25pc = height * 3 / 8
+        let num_pts: Float = Float((top_mid25pc - bottom_mid25pc) * section_width)
+
+        var results: [Float16] = []
+
+        for section in 0..<num_sections {
+            var section_sum: Float = 0
+
+            let start_x = section * section_width
+            let end_x = (section == num_sections - 1) ? width : start_x + section_width
+
+            for x in start_x..<end_x {
+                for y in bottom_mid25pc..<top_mid25pc {
+                    var depthValue = Float(convertedDepthMap[y][x]) // Access depth value directly
+                    if depthValue >= 3.0 {
+                        depthValue = 2.999
+                    }
+                    if depthValue == 0 {
+                        depthValue = 0.001
+                    }
+                    // Normalize and invert the depth value
+                    let invertedDepth = 1.0 - (depthValue / 3.0)
+
+                    // Accumulate inverted depths
+                    section_sum += invertedDepth
+                }
+            }
+
+            // Calculate the average inverted value for the section
+            let normalizedValue = section_sum / num_pts
+            results.append(Float16(normalizedValue))
+        }
+
+        //TODO: problem with image being a mirrored...bandaid below
+        return results.reversed()
     }
     
     func weightedDepthAvgSubwindows(depthMap: CVPixelBuffer) -> [Float16]? {
@@ -232,11 +279,14 @@ extension CameraController: AVCaptureDataOutputSynchronizerDelegate {
     }
     
     // found at forums.developer.apple.com/forums/thread/653539
+    // needs to be transposed to portrait mode
     func convertDepthData(depthMap: CVPixelBuffer) -> [[Float16]]? {
         let width = CVPixelBufferGetWidth(depthMap)
         let height = CVPixelBufferGetHeight(depthMap)
+        print("Height is \(height) and width is \(width)")
         
-        var convertedDepthMap: [[Float16]] = Array(repeating: Array(repeating: Float16(0), count: width), count: height)
+        // Assume the device is in portrait mode, so we will transpose the dimensions
+        var convertedDepthMap: [[Float16]] = Array(repeating: Array(repeating: Float16(0), count: height), count: width)
         
         // Lock the pixel buffer's base address for safe access
         CVPixelBufferLockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
@@ -261,7 +311,7 @@ extension CameraController: AVCaptureDataOutputSynchronizerDelegate {
         for row in 0..<height {
                 for col in 0..<width {
                     let index = width * row + col
-                    convertedDepthMap[row][col] = Float16(bitPattern: buffer[index])
+                    convertedDepthMap[col][row] = Float16(bitPattern: buffer[index])
                 }
             }
         CVPixelBufferUnlockBaseAddress(depthMap, CVPixelBufferLockFlags.readOnly)
