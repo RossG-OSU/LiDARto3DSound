@@ -8,6 +8,7 @@ An object that configures and manages the capture pipeline to stream video and L
 import Foundation
 import AVFoundation
 import CoreImage
+import SwiftUI
 
 protocol CaptureDataReceiver: AnyObject {
     func onNewData(capturedData: CameraCapturedData)
@@ -211,14 +212,14 @@ extension CameraController: AVCaptureDataOutputSynchronizerDelegate {
             for x in start_x..<end_x {
                 for y in bottom_mid25pc..<top_mid25pc {
                     var depthValue = Float(convertedDepthMap[y][x]) // Access depth value directly
-                    if depthValue >= 3.0 {
+                    if depthValue >= 4.0 {
                         depthValue = 2.999
                     }
                     if depthValue == 0 {
                         depthValue = 0.001
                     }
                     // Normalize and invert the depth value
-                    let invertedDepth = 1.0 - (depthValue / 3.0)
+                    let invertedDepth = 1.0 - (depthValue / 4.0)
 
                     // Accumulate inverted depths
                     section_sum += invertedDepth
