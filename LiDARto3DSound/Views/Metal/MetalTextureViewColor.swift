@@ -46,6 +46,13 @@ final class MTKColorTextureCoordinator: MTKCoordinator<MetalTextureViewColor> {
             print("There's no content to display.")
             return
         }
+        // added per stackoverflow.com/questions/76451005/capturing-depth-using-the-lidar-camera-sample-code-caused-gpu-timeout-error-00
+        guard let colorY = parent.capturedData.colorY?.makeTextureView(pixelFormat: .r8Unorm), let colorCbCr = parent.capturedData.colorCbCr?.makeTextureView(pixelFormat: .rg8Unorm) else {
+                        print("One or both textures are deallocated. Unable to render.")
+                        return
+                    }
+        
+        
         guard let commandBuffer = metalCommandQueue.makeCommandBuffer() else { return }
         guard let passDescriptor = view.currentRenderPassDescriptor else { return }
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: passDescriptor) else { return }
