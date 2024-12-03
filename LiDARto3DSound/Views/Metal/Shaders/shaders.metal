@@ -1,5 +1,5 @@
 /*
-See LICENSE folder for this sample’s licensing information.
+See LICENSE folder for licensing information.
 
 Abstract:
 Metal shaders that render the app's camera views.

@@ -1,8 +1,11 @@
 /*
-See LICENSE folder for this sample’s licensing information.
+See LICENSE folder for licensing information.
 
 Abstract:
 A view that presents a single texture with a simple fragment shader that passes through the values as RGB colors.
+ 
+ Based on:
+ developer.apple.com/documentation/avfoundation/capturing-depth-using-the-lidar-camera
 */
 
 import Foundation

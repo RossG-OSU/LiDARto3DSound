@@ -3,10 +3,13 @@ LiDARto3DSound
 
 Created on 10/19/24.
 
-See LICENSE folder for this sample’s licensing information.
+See LICENSE folder for licensing information.
 
 Abstract:
 The app's main user interface.
+ 
+Based on:
+developer.apple.com/documentation/avfoundation/capturing-depth-using-the-lidar-camera
 */
 
 import SwiftUI

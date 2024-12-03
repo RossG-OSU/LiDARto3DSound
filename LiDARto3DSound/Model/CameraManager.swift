@@ -1,8 +1,11 @@
 /*
-See LICENSE folder for this sample’s licensing information.
+See LICENSE folder for licensing information.
 
 Abstract:
 An object that connects the camera controller and the views.
+ 
+Based on:
+developer.apple.com/documentation/avfoundation/capturing-depth-using-the-lidar-camera
 */
 
 import Foundation

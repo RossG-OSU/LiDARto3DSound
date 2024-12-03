@@ -1,8 +1,11 @@
 /*
-See LICENSE folder for this sample’s licensing information.
+See LICENSE folder for licensing information.
 
 Abstract:
 An object that configures and manages the capture pipeline to stream video and LiDAR depth data.
+ 
+Based on:
+developer.apple.com/documentation/avfoundation/capturing-depth-using-the-lidar-camera
 */
 
 import Foundation
@@ -171,7 +174,6 @@ extension CameraController: AVCaptureDataOutputSynchronizerDelegate {
         
         
         let avgDepthSubwindows = depthAvgSubwindows(depthMap: syncedDepthData.depthData.depthDataMap)
-        print("Avg array \(String(describing: avgDepthSubwindows))")
         // Play sounds based on the depth subwindows
         if let avgDepths = avgDepthSubwindows {
             soundManager.sounds = avgDepths
@@ -284,7 +286,6 @@ extension CameraController: AVCaptureDataOutputSynchronizerDelegate {
     func convertDepthData(depthMap: CVPixelBuffer) -> [[Float16]]? {
         let width = CVPixelBufferGetWidth(depthMap)
         let height = CVPixelBufferGetHeight(depthMap)
-        print("Height is \(height) and width is \(width)")
         
         // Assume the device is in portrait mode, so we will transpose the dimensions
         var convertedDepthMap: [[Float16]] = Array(repeating: Array(repeating: Float16(0), count: height), count: width)

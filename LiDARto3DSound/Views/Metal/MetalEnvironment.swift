@@ -1,8 +1,11 @@
 /*
-See LICENSE folder for this sample’s licensing information.
+See LICENSE folder for licensing information.
 
 Abstract:
 A singleton object that holds the Metal device and command queue for the app.
+ 
+ Based on:
+ developer.apple.com/documentation/avfoundation/capturing-depth-using-the-lidar-camera
 */
 
 import Foundation

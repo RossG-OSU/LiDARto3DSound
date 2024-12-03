@@ -1,8 +1,11 @@
 /*
-See LICENSE folder for this sample’s licensing information.
+See LICENSE folder for licensing information.
 
 Abstract:
 A view that combines color textures into one RGB texture and draws it.
+ 
+ Based on:
+ developer.apple.com/documentation/avfoundation/capturing-depth-using-the-lidar-camera
 */
 
 import SwiftUI

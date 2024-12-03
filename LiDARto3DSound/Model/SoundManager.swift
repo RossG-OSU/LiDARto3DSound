@@ -1,9 +1,11 @@
-//
-//  SoundManager.swift
-//  LiDARto3DSound
-//
-//  Created by Andrew Bottom on 11/21/24.
-//
+/*
+SoundManager.swift
+LiDARto3DSound
+
+Created by Andrew Bottom on 11/21/24.
+
+See LICENSE folder for licensing information.
+*/
 import Foundation
 import AVFoundation
 

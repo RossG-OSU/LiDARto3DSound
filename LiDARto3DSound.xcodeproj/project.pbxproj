@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		36C98A2A2CFE77AC00A63256 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 36C98A292CFE77AC00A63256 /* AVFoundation.framework */; };
+		36C98A2E2CFE77F200A63256 /* CoreImage.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 36C98A2D2CFE77F200A63256 /* CoreImage.framework */; };
+		36C98A302CFE780100A63256 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 36C98A2F2CFE780100A63256 /* Foundation.framework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		49D080E52CC4A3A400E3A34D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +30,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		36C98A292CFE77AC00A63256 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		36C98A2B2CFE77C000A63256 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+		36C98A2D2CFE77F200A63256 /* CoreImage.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreImage.framework; path = System/Library/Frameworks/CoreImage.framework; sourceTree = SDKROOT; };
+		36C98A2F2CFE780100A63256 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		49D080D42CC4A3A000E3A34D /* LiDARto3DSound.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiDARto3DSound.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49D080E42CC4A3A400E3A34D /* LiDARto3DSoundTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LiDARto3DSoundTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49D080EE2CC4A3A400E3A34D /* LiDARto3DSoundUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LiDARto3DSoundUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -65,6 +75,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				36C98A2A2CFE77AC00A63256 /* AVFoundation.framework in Frameworks */,
+				36C98A302CFE780100A63256 /* Foundation.framework in Frameworks */,
+				36C98A2E2CFE77F200A63256 /* CoreImage.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,12 +98,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		36C98A282CFE77AC00A63256 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				36C98A2F2CFE780100A63256 /* Foundation.framework */,
+				36C98A2D2CFE77F200A63256 /* CoreImage.framework */,
+				36C98A2B2CFE77C000A63256 /* CoreFoundation.framework */,
+				36C98A292CFE77AC00A63256 /* AVFoundation.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		49D080CB2CC4A3A000E3A34D = {
 			isa = PBXGroup;
 			children = (
 				49D080D62CC4A3A000E3A34D /* LiDARto3DSound */,
 				49D080E72CC4A3A400E3A34D /* LiDARto3DSoundTests */,
 				49D080F12CC4A3A400E3A34D /* LiDARto3DSoundUITests */,
+				36C98A282CFE77AC00A63256 /* Frameworks */,
 				49D080D52CC4A3A000E3A34D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -183,6 +208,9 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
+				KnownAssetTags = (
+					New,
+				);
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
@@ -286,6 +314,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -338,7 +367,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = YES;
+				ONLY_ACTIVE_ARCH = NO;
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -349,6 +378,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -395,6 +425,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
@@ -406,13 +437,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"LiDARto3DSound/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "LiDARto3DSound/Preview\\ Content LiDARto3DSound/Assets.xcassets";
 				DEVELOPMENT_TEAM = 888ZTUMR3Q;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LiDARto3DSound/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LiDARto3DSound;
 				INFOPLIST_KEY_NSCameraUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -426,6 +460,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = capstone.LiDARto3DSound;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -437,13 +472,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"LiDARto3DSound/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "LiDARto3DSound/Preview\\ Content LiDARto3DSound/Assets.xcassets";
 				DEVELOPMENT_TEAM = 888ZTUMR3Q;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LiDARto3DSound/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LiDARto3DSound;
 				INFOPLIST_KEY_NSCameraUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -455,8 +493,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = capstone.LiDARto3DSound;
+				PRODUCT_BUNDLE_IDENTIFIER = capstone.LiDARto3DSoundApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

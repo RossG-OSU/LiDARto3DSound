@@ -1,8 +1,11 @@
 /*
-See LICENSE folder for this sample’s licensing information.
+See LICENSE folder for licensing information.
 
 Abstract:
 An extension to wrap a pixel buffer in a Metal texture object.
+
+Based on:
+developer.apple.com/documentation/avfoundation/capturing-depth-using-the-lidar-camera
 */
 
 import Foundation

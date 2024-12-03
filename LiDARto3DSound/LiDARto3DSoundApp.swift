@@ -1,9 +1,10 @@
-//
-//  LiDARto3DSoundApp.swift
-//  LiDARto3DSound
-//
-//  Created by Andrew on 10/19/24.
-//
+/*
+LiDARto3DSoundApp.swift
+LiDARto3DSound
+
+Created on 10/19/24.
+See LICENSE folder for licensing information.
+*/
 
 import SwiftUI
 

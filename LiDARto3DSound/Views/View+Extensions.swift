@@ -1,8 +1,11 @@
 /*
-See LICENSE folder for this sample’s licensing information.
+See LICENSE folder for licensing information.
 
 Abstract:
 View extensions to help with drawing the camera streams correctly on all device orientations.
+ 
+Based on:
+developer.apple.com/documentation/avfoundation/capturing-depth-using-the-lidar-camera
 */
 
 import SwiftUI
